@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { MOCK_USERS } from '../constants';
 import { UserProfile, TestResult, SystemEvent } from '../types';
@@ -11,6 +10,20 @@ declare global {
     SpeechRecognition: any;
   }
 }
+
+interface DashboardContainerProps {
+  children: React.ReactNode;
+  isMobileMode: boolean;
+}
+
+const DashboardContainer: React.FC<DashboardContainerProps> = ({ children, isMobileMode }) => (
+  <div className={`transition-all duration-500 ease-in-out bg-slate-50 h-full w-full flex ${isMobileMode ? 'items-center justify-center p-8 bg-slate-800' : ''}`}>
+      <div className={`flex flex-col bg-slate-50 transition-all duration-500 ${isMobileMode ? 'w-[375px] h-[812px] rounded-[3rem] border-[8px] border-slate-900 shadow-2xl overflow-hidden relative' : 'w-full h-full'}`}>
+          {isMobileMode && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-6 bg-slate-900 rounded-b-xl z-20"></div>}
+          {children}
+      </div>
+  </div>
+);
 
 export const PlatformAccess: React.FC = () => {
   const [activeRole, setActiveRole] = useState<'student' | 'teacher' | 'admin'>('student');
@@ -275,18 +288,8 @@ export const PlatformAccess: React.FC = () => {
   const renderDashboard = () => {
       if (!currentUser) return null;
 
-      // WRAPPER FOR MOBILE SIMULATION
-      const Container = ({ children }: { children: React.ReactNode }) => (
-          <div className={`transition-all duration-500 ease-in-out bg-slate-50 h-full w-full flex ${isMobileMode ? 'items-center justify-center p-8 bg-slate-800' : ''}`}>
-              <div className={`flex flex-col bg-slate-50 transition-all duration-500 ${isMobileMode ? 'w-[375px] h-[812px] rounded-[3rem] border-[8px] border-slate-900 shadow-2xl overflow-hidden relative' : 'w-full h-full'}`}>
-                  {isMobileMode && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-6 bg-slate-900 rounded-b-xl z-20"></div>}
-                  {children}
-              </div>
-          </div>
-      );
-
       return (
-          <Container>
+          <DashboardContainer isMobileMode={isMobileMode}>
               <div className="flex h-full w-full bg-slate-50 relative">
                   {/* Sidebar (Hidden on Mobile unless toggled - simplified here to always show on desktop, shrunk on mobile) */}
                   <div className={`${isMobileMode ? 'w-16 items-center' : 'w-64'} bg-slate-900 text-slate-300 flex flex-col p-4 transition-all duration-300`}>
@@ -494,7 +497,7 @@ export const PlatformAccess: React.FC = () => {
                       </div>
                   </div>
               </div>
-          </Container>
+          </DashboardContainer>
       );
   };
 

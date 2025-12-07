@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { AisleNode, AisleLink } from '../types';
+import { Sparkles, Loader2, Check, X, Wand2 } from 'lucide-react';
 
 interface NetworkGraphProps {
   nodes: AisleNode[];
@@ -17,6 +18,11 @@ interface NetworkGraphProps {
   selectedStakeholder?: string | null;
   simulationMode?: boolean;
   activeAiLink?: AisleLink | null;
+  // AI Feature Props
+  onGenerateAiLinks?: () => void;
+  onAcceptAiLink?: (link: AisleLink) => void;
+  onRejectAiLink?: (link: AisleLink) => void;
+  isGeneratingAiLinks?: boolean;
 }
 
 export const NetworkGraph: React.FC<NetworkGraphProps> = ({ 
@@ -32,11 +38,30 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
     connectDisconnected = false, 
     selectedStakeholder, 
     simulationMode,
-    activeAiLink 
+    activeAiLink,
+    onGenerateAiLinks,
+    onAcceptAiLink,
+    onRejectAiLink,
+    isGeneratingAiLinks
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Helper to safely get ID from link source/target
+  const getId = (n: any): string => {
+      if (!n) return "";
+      return (typeof n === 'object' ? n.id : n) as string;
+  };
+
+  // Helper to normalize a link object for callbacks (ensures source/target are strings)
+  const normalizeLink = (l: any): AisleLink => {
+      return {
+          ...l,
+          source: getId(l.source),
+          target: getId(l.target)
+      };
+  };
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current) return;
@@ -53,12 +78,6 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
     // Create a lookup map for faster access to node data
     const nodeMap = new Map<string, AisleNode>();
     graphNodes.forEach(n => nodeMap.set(n.id, n));
-
-    // Helper to safely get ID from link source/target which might be string or object due to D3 mutation
-    const getId = (n: any): string => {
-        if (!n) return "";
-        return (typeof n === 'object' ? n.id : n) as string;
-    };
 
     // Helper to safely compare links (handling D3 object vs String ID references)
     const getLinkId = (l: any) => {
@@ -307,7 +326,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
           const isActiveAi = activeAiLinkId && getLinkId(d) === activeAiLinkId;
           if (isActiveAi) return 1;
 
-          if (selectedNodeId) return selectedNeighborLinkIndices.has(i) ? 1 : 0.1;
+          if (selectedNodeId) return selectedNeighborLinkIndices.has(i) ? 1 : 0.05; // Stronger dimming
           if (highlightTargetId) return traceHighlightedLinkIndices.has(i) ? 1 : 0.1;
           if (selectedStakeholder) return isRelevantLink(d) ? 0.9 : 0.05;
           return 0.8;
@@ -327,7 +346,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
       .on("click", (event, d) => {
           if (d.isAiGenerated && onLinkClick) {
               event.stopPropagation();
-              onLinkClick(d);
+              onLinkClick(normalizeLink(d));
           }
       });
 
@@ -347,7 +366,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
         .on("click", (event, d) => {
             if (d.isAiGenerated && onLinkClick) {
                 event.stopPropagation();
-                onLinkClick(d);
+                onLinkClick(normalizeLink(d));
             }
         });
 
@@ -563,6 +582,50 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
           `}
         </style>
         <svg ref={svgRef} className="w-full h-full block" />
+        
+        {/* UI Overlay: AI Link Acceptance */}
+        {activeAiLink && onAcceptAiLink && onRejectAiLink && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/95 backdrop-blur p-4 rounded-xl shadow-2xl border border-violet-200 z-30 max-w-sm animate-in fade-in zoom-in-95 ring-4 ring-violet-50">
+                <div className="flex items-center gap-2 mb-3 text-violet-700 font-bold uppercase text-xs tracking-wider border-b border-violet-100 pb-2">
+                    <Sparkles size={14} /> AI Suggested Connection
+                </div>
+                <div className="flex items-center gap-2 justify-center mb-4 text-sm font-semibold text-slate-800 bg-slate-50 p-2 rounded border border-slate-100">
+                    <span className="bg-white px-2 py-1 rounded border shadow-sm">{getId(activeAiLink.source)}</span>
+                    <span className="text-slate-400">→</span>
+                    <span className="bg-white px-2 py-1 rounded border shadow-sm">{getId(activeAiLink.target)}</span>
+                </div>
+                <p className="text-xs text-slate-600 mb-4 bg-violet-50 p-3 rounded italic border border-violet-100 leading-relaxed">
+                    "{activeAiLink.reason}"
+                </p>
+                <div className="flex gap-3">
+                    <button 
+                        onClick={() => onRejectAiLink(normalizeLink(activeAiLink))} 
+                        className="flex-1 py-2 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 hover:text-red-500 rounded flex items-center justify-center gap-1 transition-colors"
+                    >
+                        <X size={14} /> Reject
+                    </button>
+                    <button 
+                        onClick={() => onAcceptAiLink(normalizeLink(activeAiLink))} 
+                        className="flex-1 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded shadow-sm flex items-center justify-center gap-1 transition-colors"
+                    >
+                        <Check size={14} /> Accept
+                    </button>
+                </div>
+            </div>
+        )}
+
+        {/* UI Overlay: Generate AI Links Button */}
+        {onGenerateAiLinks && (
+            <button 
+                onClick={onGenerateAiLinks}
+                disabled={isGeneratingAiLinks}
+                className="absolute top-4 right-4 z-20 flex items-center gap-2 px-3 py-2 bg-white/90 backdrop-blur text-violet-700 text-xs font-bold uppercase tracking-wide border border-violet-200 rounded-lg shadow-sm hover:shadow-md hover:bg-violet-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                {isGeneratingAiLinks ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                <span>{isGeneratingAiLinks ? 'Thinking...' : 'AI Suggest Links'}</span>
+            </button>
+        )}
+
         <div ref={tooltipRef} className="fixed z-50 hidden bg-slate-900/95 text-white p-3 rounded-lg shadow-xl border border-slate-700 backdrop-blur-sm pointer-events-none max-w-[250px] transition-opacity duration-150" />
         <div className="absolute bottom-4 right-4 text-xs text-slate-400 opacity-50 pointer-events-none">Click to select • Double-click to edit • Drag to move</div>
     </div>

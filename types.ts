@@ -29,23 +29,58 @@ export interface UserProfile {
   }
 }
 
+export interface CourseContent {
+    id: string;
+    title: string;
+    difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+    type: 'Video' | 'Quiz' | 'Interactive';
+    subject: string;
+}
+
+export interface StudentProgress {
+    studentId: string;
+    contentId: string;
+    score: number;
+    timestamp: string;
+}
+
+export interface AdaptiveRecommendation {
+    studentId: string;
+    recommendedContent: CourseContent[];
+    reason: string;
+}
+
 export interface ModelConfig {
-  taskType: 'classification' | 'regression';
+  taskType: 'classification' | 'regression' | 'forecasting';
   algorithm: string;
   epochs: number;
   batchSize: number;
   learningRate: number;
+  optimizer: 'adam' | 'sgd' | 'rmsprop';
+  hiddenLayers: number;
+  layerSize: number;
+  dropout: number;
+  activation: 'relu' | 'tanh' | 'sigmoid';
   validationProtocol: 'holdout' | 'k-fold';
   kFoldSplits?: number;
   metrics: string[];
+  // Transformer specific
+  transformerLayers?: number;
+  attentionHeads?: number;
+  embeddingDim?: number;
 }
 
 export interface TestResult {
   id: string;
   name: string;
   level: 'unit' | 'integration' | 'system';
+  category?: string;
+  description?: string;
+  expectedResult?: string;
   status: 'pending' | 'running' | 'passed' | 'failed';
   duration?: string;
+  score?: number;
+  threshold?: number;
 }
 
 export interface SystemEvent {
@@ -53,6 +88,13 @@ export interface SystemEvent {
   timestamp: string;
   type: 'info' | 'warning' | 'error' | 'success';
   message: string;
+}
+
+export interface DeploymentTarget {
+    platform: 'mobile' | 'web' | 'iot';
+    os: 'android' | 'ios' | 'linux';
+    buildStatus: 'idle' | 'building' | 'signed' | 'deployed';
+    version: string;
 }
 
 export interface AisleNode {
@@ -102,4 +144,10 @@ export interface AisleLink {
 export interface AnalysisSection {
   title: string;
   content: string;
+}
+
+export interface GraphTestResult {
+    name: string;
+    passed: boolean;
+    details: string;
 }
